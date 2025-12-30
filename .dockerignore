@@ -1,0 +1,73 @@
+# .dockerignore - Exclude unnecessary files from Docker build context
+
+# Git files
+.git/
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+docs/
+
+# Test data and outputs
+test-*/
+test_outputs/
+example_outputs/
+build.log
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+# env/ - commented out because RFdiffusion needs env/SE3Transformer directory
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.git
+.mypy_cache
+.pytest_cache
+.hypothesis
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Large files that should be downloaded at runtime
+models/
+*.pt
+*.pth
+*.ckpt
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Local configuration
+.env
+.env.local
+
+# Temporary files
+tmp/
+temp/

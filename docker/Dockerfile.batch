@@ -1,0 +1,69 @@
+# Dockerfile.batch - Optimized for AWS Batch
+FROM nvcr.io/nvidia/cuda:11.6.2-cudnn8-runtime-ubuntu20.04
+
+# Install system dependencies
+RUN apt-get -q update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y \
+    git \
+    python3.9 \
+    python3-pip \
+    curl \
+    wget \
+    awscli \
+    ca-certificates \
+    && python3.9 -m pip install -q -U --no-cache-dir pip \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get autoremove -y \
+    && apt-get clean
+
+# Copy RFdiffusion code
+COPY . /app/RFdiffusion/
+
+# Install Python dependencies (optimized order to avoid conflicts)
+# Install PyTorch with CUDA support first
+RUN pip install -q --no-cache-dir \
+    torch==1.12.1 torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu116
+
+# Install DGL with CUDA support
+RUN pip install -q --no-cache-dir \
+    dgl==1.0.2+cu116 -f https://data.dgl.ai/wheels/cu116/repo.html
+
+# Install SE3Transformer dependencies and package
+RUN pip install -q --no-cache-dir \
+    e3nn==0.3.3 \
+    wandb==0.12.0 \
+    pynvml==11.0.0 \
+    git+https://github.com/NVIDIA/dllogger#egg=dllogger \
+    decorator==5.1.0
+
+# Install SE3Transformer package
+RUN cd /app/RFdiffusion/env/SE3Transformer && \
+    python3.9 setup.py install
+
+# Install remaining dependencies
+RUN pip install -q --no-cache-dir \
+    hydra-core==1.3.2 \
+    pyrsistent==0.19.3 \
+    boto3 \
+    requests
+
+# Finally install RFdiffusion itself
+RUN pip install --no-cache-dir /app/RFdiffusion --no-deps
+
+# Create necessary directories
+RUN mkdir -p /app/models /tmp/inputs /tmp/outputs /app/scripts
+
+# Copy our custom batch execution script
+COPY scripts/run_batch_job.sh /app/scripts/
+RUN chmod +x /app/scripts/run_batch_job.sh
+
+# Models will be downloaded at runtime or from S3 cache
+# RUN bash /app/RFdiffusion/scripts/download_models.sh /app/models
+
+WORKDIR /app/RFdiffusion
+
+ENV DGLBACKEND="pytorch"
+ENV PYTHONPATH="/app/RFdiffusion:$PYTHONPATH"
+
+# Use our custom entrypoint instead of the direct python call
+ENTRYPOINT ["/app/scripts/run_batch_job.sh"]
