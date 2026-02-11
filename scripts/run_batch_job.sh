@@ -127,30 +127,10 @@ nvidia-smi || handle_error "NVIDIA GPU not available or nvidia-smi not found"
 echo "GPU check passed, executing RFdiffusion..."
 echo "Command: ${RFDIFFUSION_COMMAND}"
 
-# Execute the RFdiffusion command with progress monitoring
-{
-    eval "${RFDIFFUSION_COMMAND}" 2>&1 | while IFS= read -r line; do
-        echo "$line"
-        
-        # Simple progress estimation based on log patterns
-        if [[ "$line" == *"Calculating IGSO3"* ]]; then
-            update_status "RUNNING" 40 "Initializing diffusion process"
-        elif [[ "$line" == *"diffusion step"* ]] || [[ "$line" == *"step"* ]]; then
-            # Try to extract step numbers for progress
-            if [[ "$line" =~ step[[:space:]]*([0-9]+) ]]; then
-                local step=${BASH_REMATCH[1]}
-                local progress=$((40 + (step * 45 / 50)))  # Assume 50 steps max
-                update_status "RUNNING" $progress "Diffusion step $step"
-            fi
-        elif [[ "$line" == *"Saving"* ]] || [[ "$line" == *"Writing"* ]]; then
-            update_status "RUNNING" 85 "Saving results"
-        fi
-    done
-    echo ${PIPESTATUS[0]} > /tmp/exit_code
-} | tee /tmp/outputs/execution.log
-
-# Check exit code
-EXIT_CODE=$(cat /tmp/exit_code 2>/dev/null || echo "1")
+# Execute the RFdiffusion command
+update_status "RUNNING" 40 "Running RFdiffusion inference"
+eval "${RFDIFFUSION_COMMAND}" 2>&1 | tee /tmp/outputs/execution.log
+EXIT_CODE=${PIPESTATUS[0]}
 if [[ $EXIT_CODE -ne 0 ]]; then
     echo "RFdiffusion execution failed with exit code: $EXIT_CODE"
     # Extract error from logs
